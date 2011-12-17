@@ -30,8 +30,8 @@ EndContentData */
 #include "trial_of_the_champion.h"
 #include "Vehicle.h"
 
-#define GOSSIP_START_EVENT1     "I'm ready to start challenge."
-#define GOSSIP_START_EVENT2     "I'm ready for the next challenge."
+#define GOSSIP_START_EVENT1     "Estoy listo para comenzar a desafio."
+#define GOSSIP_START_EVENT2     "Estoy listo para el siguiente desafio."
 
 #define ORIENTATION             4.714f
 
@@ -299,6 +299,7 @@ public:
         uint32 uiPhase;
         uint32 uiTimer;
 
+		uint64 uiBlackKnightGUID;
         uint64 uiVehicle1GUID;
         uint64 uiVehicle2GUID;
         uint64 uiVehicle3GUID;
@@ -587,15 +588,30 @@ public:
                    instance->GetData(BOSS_ARGENT_CHALLENGE_E) == DONE) ||
                    instance->GetData(BOSS_ARGENT_CHALLENGE_P) == DONE)
                {
-                   me->SummonCreature(VEHICLE_BLACK_KNIGHT,769.834f,651.915f,447.035f,0);
-                   if (GameObject* pGO = GameObject::GetGameObject(*me, instance->GetData64(DATA_MAIN_GATE)))
-                       instance->HandleGameObject(pGO->GetGUID(),false);
+                   if (Unit* pBlackKnight = me->SummonCreature(VEHICLE_BLACK_KNIGHT,801.369507f, 640.574280f, 469.314362f, 3.97124f,TEMPSUMMON_DEAD_DESPAWN,180000))
+                   {
+                       uiBlackKnightGUID = pBlackKnight->GetGUID();
+                       pBlackKnight->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                       pBlackKnight->SetUInt64Value(UNIT_FIELD_TARGET, me->GetGUID());
+                       me->SetUInt64Value(UNIT_FIELD_TARGET, uiBlackKnightGUID);
+
+                       if (GameObject* pGO = GameObject::GetGameObject(*me, instance->GetData64(DATA_MAIN_GATE)))
+                           instance->HandleGameObject(pGO->GetGUID(),false);
+                   }
+
+                   me->RemoveFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_NON_ATTACKABLE);
+                   me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                   me->SetReactState(REACT_AGGRESSIVE);
                    DoScriptText(SAY_START5, me);
                }
             }
         }
+    	void Reset()
+        {
+            uiBlackKnightGUID = 0;
+    	}
 
-        void AggroAllPlayers(Creature* temp)
+        void AggroAllPlayers(Creature* pTemp)
         {
             Map::PlayerList const &PlList = me->GetMap()->GetPlayers();
 
@@ -604,33 +620,20 @@ public:
 
             for (Map::PlayerList::const_iterator i = PlList.begin(); i != PlList.end(); ++i)
             {
-                if (Player* player = i->getSource())
+                if (Player* pPlayer = i->getSource())
                 {
-                    if (player->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT) && !player->isGameMaster())
-                    {                        Creature* creature = player->GetVehicleBase()->ToCreature();
-
-                        if (creature)
-                        {
-                            temp->SetHomePosition(me->GetPositionX(),me->GetPositionY(),me->GetPositionZ(),me->GetOrientation());
-                            temp->RemoveFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_NON_ATTACKABLE);
-                            temp->SetReactState(REACT_AGGRESSIVE);
-                            temp->SetInCombatWith(creature);
-                            player->SetInCombatWith(temp);
-                            creature->SetInCombatWith(temp);
-                            temp->AddThreat(creature, 0.0f);
-                        }
-                    } else if (player->isAlive() && !player->isGameMaster() )
-                    {
-                        temp->SetHomePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation());
-                        temp->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                        temp->SetReactState(REACT_AGGRESSIVE);
-                        temp->SetInCombatWith(player);
-                        player->SetInCombatWith(temp);
-                        temp->AddThreat(player, 0.0f);
-                    }
-
-                    if (player->isGameMaster())
+                    if (pPlayer->isGameMaster())
                         continue;
+
+                    if (pPlayer->isAlive())
+                    {
+                        pTemp->SetHomePosition(me->GetPositionX(),me->GetPositionY(),me->GetPositionZ(),me->GetOrientation());
+                        pTemp->RemoveFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_NON_ATTACKABLE);
+                        pTemp->SetReactState(REACT_AGGRESSIVE);
+                        pTemp->SetInCombatWith(pPlayer);
+                        pPlayer->SetInCombatWith(pTemp);
+                        pTemp->AddThreat(pPlayer, 0.0f);
+                    }
                 }
             }
         }
