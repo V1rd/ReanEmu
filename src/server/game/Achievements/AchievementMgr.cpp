@@ -699,7 +699,7 @@ void AchievementMgr::SendCriteriaUpdate(AchievementCriteriaEntry const* entry, C
     if (!entry->timeLimit)
         data << uint32(0);
     else
-        data << uint32(timedCompleted ? 0 : 1); // this are some flags, 1 is for keeping the counter at 0 in client
+        data << uint32(timedCompleted ? 1 : 0); // this are some flags, 1 is for keeping the counter at 0 in client
     data << uint32(secsToTimeBitFields(progress->date));
     data << uint32(timeElapsed);    // time elapsed in seconds
     data << uint32(0);              // unk
@@ -1075,7 +1075,6 @@ void AchievementMgr::UpdateAchievementCriteria(AchievementCriteriaTypes type, ui
                     AchievementCriteriaDataSet const* data = sAchievementMgr->GetCriteriaDataSet(achievementCriteria);
                     if (!data || !data->Meets(GetPlayer(), unit))
                         continue;
-                    break;
                 }
 
                 SetCriteriaProgress(achievementCriteria, 1);
